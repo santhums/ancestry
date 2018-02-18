@@ -14,26 +14,21 @@ module Ancestry
           # ... for each descendant ...
           unscoped_descendants.each do |descendant|
             # ... replace old ancestry with new ancestry
-            # descendant.without_ancestry_callbacks do
+            descendant.without_ancestry_callbacks do
               column = self.class.ancestry_column
               v = read_attribute(column)
-              replace_ancestry = if v.blank? then
-                      id.to_s
-                    else
-                      vs = v.split(',')
-                      vss = []
-                      vs.each do |vv|
-                        vss << "#{vv}/#{id}"
-                      end
-                      vss.join(',')
-                    end
-
-              ancestry_replacement = descendant.read_attribute(descendant.class.ancestry_column).gsub(/^#{self.child_ancestry}/,replace_ancestry)
               descendant.update_attribute(
                   column,
-                  ancestry_replacement
+                  descendant.read_attribute(descendant.class.ancestry_column).gsub(
+                      /^#{self.child_ancestry}/,
+                      if v.blank? then
+                        id.to_s
+                      else
+                        "#{v}/#{id}"
+                      end
+                  )
               )
-            # end
+            end
           end
         end
       end
@@ -194,7 +189,7 @@ module Ancestry
         or #{column} like ?
         or #{column} like ?
         or #{column} like ?
-        or #{column} = ?", "#{lookup}", "#{lookup},%", "%,#{id}", ",#{id}", "#{id}"]
+        or #{column} = ?", "#{lookup}", "#{lookup}/%", "#{lookup},%", ",#{id}", "#{id}"]
     end
 
     def descendants(depth_options = {})
@@ -219,8 +214,6 @@ module Ancestry
         or #{column} like ?
         or #{column} = ?
         or #{self.base_class.table_name}.#{self.base_class.primary_key} = ?", "#{lookup}", "#{lookup}/%", "#{lookup},%", ",#{id}", "#{id}", "#{id}"]
-      # TODO: check for all childrens
-      # check for under multiple parents using ',2/%'
     end
 
     def subtree(depth_options = {})
